@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+.env
+results/*.png
+.DS_Store
+
+# Scheduled-task scratch files: drive the autonomous research-assistant
+# session locally, not part of the project's code/deliverables.
+/project_overview.md
+/PROGRESS_LOG.md
+/NEEDS_YOUR_INPUT.md
