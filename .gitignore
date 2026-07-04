@@ -13,3 +13,7 @@ results/*.png
 /project_overview.md
 /PROGRESS_LOG.md
 /NEEDS_YOUR_INPUT.md
+
+# GitHub push credential for the scheduled task (contains a token; must
+# never be committed).
+/.credentials/
