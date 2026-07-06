@@ -1,10 +1,12 @@
 from pipeline.corruptions import (
+    model_backed_replacement,
     remove,
     split_into_steps,
     standard_corruption_set,
     substitute_step,
     truncate,
 )
+from pipeline.inference import MockBackend
 
 SAMPLE_COT = (
     "First, Natalia sold 48 clips in April.\n\n"
@@ -88,6 +90,33 @@ def test_remove_returns_empty_cot():
     assert c.method == "remove"
     assert c.corrupted_cot == ""
     assert c.cut_point == 0
+
+
+def test_model_backed_replacement_uses_backend_output():
+    backend = MockBackend()
+    replace_fn = model_backed_replacement(backend, problem_prompt="Some problem.")
+    c = substitute_step(SAMPLE_COT, step_index=0, replacement_fn=replace_fn)
+    # MockBackend.generate is deterministic and ignores the prompt content,
+    # so the replaced step should equal its canned raw_text output. Note:
+    # we check corrupted_cot directly rather than re-splitting it, since
+    # MockBackend's canned output itself contains "\n\n" and would be
+    # re-segmented into multiple "steps" if we ran split_into_steps again.
+    expected = backend.generate("Some problem.").raw_text.strip()
+    original_steps = split_into_steps(SAMPLE_COT)
+    assert c.corrupted_cot == "\n\n".join([expected] + original_steps[1:])
+    assert expected != original_steps[0]
+
+
+def test_model_backed_replacement_falls_back_on_empty_response():
+    class EmptyBackend(MockBackend):
+        def generate(self, prompt, max_tokens=2048):
+            from pipeline.inference import GenerationResult
+
+            return GenerationResult(cot="", final_answer="", raw_text="   ")
+
+    replace_fn = model_backed_replacement(EmptyBackend(), problem_prompt="Some problem.")
+    original_step = split_into_steps(SAMPLE_COT)[0]
+    assert replace_fn(original_step) == original_step
 
 
 def test_standard_corruption_set_has_expected_methods():

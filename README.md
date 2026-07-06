@@ -64,6 +64,31 @@ results/            - output plots and result tables (empty so far)
 - [ ] Scaling-curve plot and write-up of results.
 - [ ] Optional: activation-patching deep dive on the most interesting size.
 
+## Literature check (2026-07-06)
+
+Re-checked whether the scaling-curve framing in `project_overview.md` has been
+published since project start. Relevant recent work found:
+
+- Cornish & Rogers, "Examining the Faithfulness of Deepseek R1's Chain-of-Thought
+  Reasoning" (ACL CHOMPS 2025) — faithfulness analysis of R1 itself, not the
+  distilled family or a size sweep.
+- Ye et al., "Mechanistic Evidence for Faithfulness Decay in Chain-of-Thought
+  Reasoning" (arXiv 2602.11201, Feb 2026) — proposes a causal-corruption metric
+  (NLDD) and a "reasoning horizon" finding, tested across three *different*
+  model families (Llama, DeepSeek, Gemma) at single sizes each, not multiple
+  sizes within one distilled family.
+- "Mapping Faithful Reasoning in Language Models" (arXiv 2510.22362, Oct 2025) —
+  activation-space faithfulness tracing on Qwen3-4B, single size, different
+  method (internal activations, not truncation).
+- Chen et al., "Are DeepSeek R1 And Other Reasoning Models More Faithful?"
+  (arXiv 2501.08156) — compares faithfulness across different model
+  *families*, not sizes within a distillation family.
+
+None of these run one faithfulness metric across multiple sizes of the same
+distilled family and report the trend — the gap this project targets still
+appears open as of this check. Will re-verify periodically since this is an
+active research area.
+
 ## Limitations (so far)
 
 - GSM8K was chosen over MATH as the initial task domain because its answers
@@ -72,12 +97,13 @@ results/            - output plots and result tables (empty so far)
   sizes (e.g. near-100% accuracy everywhere), there won't be enough
   correctly-solved-but-corruptible problems to get a meaningful faithfulness
   signal, and a MATH subset would be the fallback — see `data.py` docstring.
-- Step substitution currently falls back to a naive numeric perturbation
-  (change one number in a step) when no model-backed replacement function is
-  supplied. This produces a "wrong" step but not always a *maximally
-  plausible* wrong step. A model-generated substitution (using the same or a
-  stronger model as a judge) would likely be a stronger version of this test
-  once the pipeline is validated end-to-end.
+- Step substitution falls back to a naive numeric perturbation (change one
+  number in a step) when no model-backed replacement function is supplied.
+  This produces a "wrong" step but not always a *maximally plausible* wrong
+  step. `pipeline/corruptions.py:model_backed_replacement` now provides a
+  provider-agnostic, unit-tested wiring for a stronger, model-generated
+  substitution (any `ModelBackend` can act as the judge) — it just needs a
+  real backend behind it once the hosted-API decision below is resolved.
 - No real model results exist yet. Everything above has been validated only
   against `MockBackend`, a deterministic stand-in with no relationship to
   actual model behavior — it exists purely to exercise the pipeline's
