@@ -47,8 +47,12 @@ pipeline/
   scoring.py        - faithfulness rate, Wilson confidence intervals, scaling-curve plot
   run_experiment.py - orchestrates steps 1-4 above for one model
 tests/              - unit tests for all of the above (29 tests, run via pytest)
-notebooks/          - analysis notebooks (empty so far)
-results/            - output plots and result tables (empty so far)
+notebooks/          - analysis notebooks. analysis_scaffold.ipynb runs the full
+                      run-experiment -> table -> scaling-curve-plot path against
+                      a synthetic backend; swap in HostedAPIBackend + load_gsm8k
+                      once real inference is unblocked (see notebook's last cell)
+results/            - output plots and result tables. mock_demo_scaling_curve.png
+                      is synthetic (from the notebook above), not a real result
 ```
 
 ## Status
@@ -57,6 +61,11 @@ results/            - output plots and result tables (empty so far)
       inference abstraction layer — implemented and unit-tested against a
       mock backend (`pipeline/inference.py:MockBackend`), no real model
       calls yet.
+- [x] Full analysis path (run experiment → aggregate → results table →
+      scaling-curve plot with Wilson CIs) dry-run end-to-end in
+      `notebooks/analysis_scaffold.ipynb` against a synthetic backend, so it
+      needs no code changes once real inference is available — just a
+      backend + data-source swap (see notebook's last cell).
 - [ ] Hosted inference API selected and wired up — **blocked** on choosing
       a provider (Together AI / Fireworks / Groq / similar) and budget.
 - [ ] Truncation-test pipeline validated on one real model size.
