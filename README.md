@@ -41,12 +41,16 @@ writing.
 
 ```
 pipeline/
-  data.py           - GSM8K loading, answer grading (fixture data for offline dev)
-  corruptions.py    - truncate / substitute_step / remove corruption methods
-  inference.py      - ModelBackend interface; MockBackend (no cost) + HostedAPIBackend (stub)
-  scoring.py        - faithfulness rate, Wilson confidence intervals, scaling-curve plot
-  run_experiment.py - orchestrates steps 1-4 above for one model
-tests/              - unit tests for all of the above (29 tests, run via pytest)
+  data.py                - GSM8K loading, answer grading (fixture data for offline dev)
+  corruptions.py         - truncate / substitute_step / remove corruption methods
+  inference.py           - ModelBackend interface; MockBackend (no cost) + HostedAPIBackend (stub)
+  scoring.py             - faithfulness rate, Wilson confidence intervals, scaling-curve plot
+  run_experiment.py      - orchestrates steps 1-4 above for one model
+  activation_patching.py - optional-deeper-layer scaffold: ActivationPatchingBackend
+                           interface + MockActivationPatchingBackend + layer-sweep
+                           localization logic. No real backend yet (needs
+                           TransformerLens/nnsight + GPU, see module docstring)
+tests/              - unit tests for all of the above (36 tests, run via pytest)
 notebooks/          - analysis notebooks. analysis_scaffold.ipynb runs the full
                       run-experiment -> table -> scaling-curve-plot path against
                       a synthetic backend; swap in HostedAPIBackend + load_gsm8k
@@ -71,7 +75,11 @@ results/            - output plots and result tables. mock_demo_scaling_curve.pn
 - [ ] Truncation-test pipeline validated on one real model size.
 - [ ] Full run across 1.5B / 7B / 14B.
 - [ ] Scaling-curve plot and write-up of results.
-- [ ] Optional: activation-patching deep dive on the most interesting size.
+- [x] Optional-deeper-layer scaffold: `pipeline/activation_patching.py`
+      (interface + mock backend + layer-sweep localization logic), unit-tested.
+      Not yet backed by a real model — see Limitations.
+- [ ] Optional: activation-patching deep dive on the most interesting size,
+      once a real `ActivationPatchingBackend` exists.
 
 ## Literature check (2026-07-06)
 
@@ -118,6 +126,19 @@ active research area.
   actual model behavior — it exists purely to exercise the pipeline's
   plumbing (corruption application, grading, aggregation, CI computation)
   before spending any API budget.
+- The activation-patching module (`pipeline/activation_patching.py`) is an
+  interface and mock backend only — no real model weights are loaded
+  anywhere in this repo yet. Real activation-level work needs
+  TransformerLens/nnsight running against actual weights on a GPU, which is
+  a separate piece of infrastructure from the hosted-API text-in/text-out
+  path used for the core truncation test (see module docstring and
+  `project_overview.md`'s compute plan).
+- This scheduled-task sandbox has a narrow network allowlist: `pypi.org` is
+  reachable, but `huggingface.co`, `api.together.xyz`, `api.fireworks.ai`,
+  and `api.groq.com` all return 403 from the sandbox's proxy (confirmed
+  again in Session 5). This means the real inference step likely can't run
+  from inside this sandbox even after a provider/API key is chosen — see
+  the open question in `NEEDS_YOUR_INPUT.md`.
 
 ## Next steps
 
