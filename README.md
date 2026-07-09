@@ -50,7 +50,7 @@ pipeline/
                            interface + MockActivationPatchingBackend + layer-sweep
                            localization logic. No real backend yet (needs
                            TransformerLens/nnsight + GPU, see module docstring)
-tests/              - unit tests for all of the above (36 tests, run via pytest)
+tests/              - unit tests for all of the above (40 tests, run via pytest)
 notebooks/          - analysis notebooks. analysis_scaffold.ipynb runs the full
                       run-experiment -> table -> scaling-curve-plot path against
                       a synthetic backend; swap in HostedAPIBackend + load_gsm8k
@@ -71,7 +71,11 @@ results/            - output plots and result tables. mock_demo_scaling_curve.pn
       needs no code changes once real inference is available — just a
       backend + data-source swap (see notebook's last cell).
 - [ ] Hosted inference API selected and wired up — **blocked** on choosing
-      a provider (Together AI / Fireworks / Groq / similar) and budget.
+      a provider (Together AI / Fireworks / Groq / similar) and budget. A
+      2026-07-09 pricing/availability check (see `NEEDS_YOUR_INPUT.md`) found
+      Together AI is the only one of the three with confirmed serverless
+      coverage of all three needed sizes (1.5B/7B/14B); Groq's docs only show
+      32B/70B, and Fireworks' support for the smaller sizes was ambiguous.
 - [ ] Truncation-test pipeline validated on one real model size.
 - [ ] Full run across 1.5B / 7B / 14B.
 - [ ] Scaling-curve plot and write-up of results.
@@ -81,7 +85,7 @@ results/            - output plots and result tables. mock_demo_scaling_curve.pn
 - [ ] Optional: activation-patching deep dive on the most interesting size,
       once a real `ActivationPatchingBackend` exists.
 
-## Literature check (2026-07-06)
+## Literature check (2026-07-09)
 
 Re-checked whether the scaling-curve framing in `project_overview.md` has been
 published since project start. Relevant recent work found:
@@ -100,6 +104,18 @@ published since project start. Relevant recent work found:
 - Chen et al., "Are DeepSeek R1 And Other Reasoning Models More Faithful?"
   (arXiv 2501.08156) — compares faithfulness across different model
   *families*, not sizes within a distillation family.
+- **New this check:** "Lie to Me: How Faithful Is Chain-of-Thought Reasoning in
+  Open-Weight Reasoning Models?" (arXiv 2603.22582, Mar 2026) — tests 12 open-weight
+  reasoning models across 9 architectural families (7B-685B) using *hint-injection*
+  faithfulness (Turpin-style: does the model acknowledge a planted hint influenced
+  its answer), not the truncation/corruption test this project uses. Its headline
+  finding — "training methodology and model family predict faithfulness more
+  strongly than parameter count" — is about cross-family comparison at ~1 size per
+  family, not a within-family multi-size sweep, so it doesn't overlap with this
+  project's specific gap. Worth citing in the write-up as a relevant, differently-
+  scoped finding (different metric, different comparison axis), and worth revisiting
+  if a follow-up applies its hint-injection method within one distilled family across
+  sizes, which would be a closer overlap than anything found so far.
 
 None of these run one faithfulness metric across multiple sizes of the same
 distilled family and report the trend — the gap this project targets still

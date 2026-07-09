@@ -58,7 +58,12 @@ def load_gsm8k(split: str = "test", n: int | None = None) -> list[Problem]:
         ) from e
 
     try:
-        ds = datasets.load_dataset("gsm8k", "main", split=split)
+        # "openai/gsm8k" is the current canonical repo id on the HF Hub. The
+        # old bare "gsm8k" id is a legacy script-based dataset that recent
+        # `datasets` versions either reject outright or only load with
+        # trust_remote_code=True (a foot-gun for a pipeline meant to run
+        # unattended) -- checked 2026-07-09, see PROGRESS_LOG Session 6.
+        ds = datasets.load_dataset("openai/gsm8k", "main", split=split)
     except Exception as e:  # noqa: BLE001 - want a clear message either way
         raise RuntimeError(
             "Failed to download GSM8K from the Hugging Face Hub. This "
