@@ -7,6 +7,17 @@ venv/
 .env
 results/*.png
 .DS_Store
+.Rhistory
+
+# Stray debug/lock artifacts from git operations on this session's mount --
+# see PROGRESS_LOG Session 6 "workspace mount doesn't support unlink()" note.
+# rm/unlink fails here (Operation not permitted) even for files this same
+# session created, so leftovers from lock-rollback and other git-internal
+# unlink calls sometimes can't be cleaned up and are ignored instead.
+*.lock.stale.*
+/ovr_a.txt
+/retry_unlink.tmp
+/test_unlink_check.tmp
 
 # Scheduled-task scratch files: drive the autonomous research-assistant
 # session locally, not part of the project's code/deliverables.
