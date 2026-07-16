@@ -1,8 +1,12 @@
 # Faithfulness Scaling in Distilled Reasoning Models
 
 **Status: early build. No real model results yet — pipeline is implemented and
-unit-tested against a mock backend; hosted-API inference is pending an
-account/provider decision.**
+unit-tested against a mock backend. Inference plan is now decided (2026-07-16):
+run real models for free on a Colab GPU via `pipeline/inference.py:LocalHFBackend`
+and `notebooks/colab_run_experiment.ipynb`, rather than a hosted API — see
+`NEEDS_YOUR_INPUT.md` for why, and the notebook for the one manual step left
+(a human needs to actually click "Run" in Colab; that can't happen from this
+automated sandbox).**
 
 ## Motivation
 
@@ -43,20 +47,26 @@ writing.
 pipeline/
   data.py                - GSM8K loading, answer grading (fixture data for offline dev)
   corruptions.py         - truncate / substitute_step / remove corruption methods
-  inference.py           - ModelBackend interface; MockBackend (no cost) + HostedAPIBackend (stub)
+  inference.py           - ModelBackend interface; MockBackend (no cost) + LocalHFBackend
+                           (real inference via transformers, driven from the Colab
+                           notebook below -- the primary path) + HostedAPIBackend
+                           (stub, kept as a fallback -- see inference.py docstring)
   scoring.py             - faithfulness rate, Wilson confidence intervals, scaling-curve plot
   run_experiment.py      - orchestrates steps 1-4 above for one model
   activation_patching.py - optional-deeper-layer scaffold: ActivationPatchingBackend
                            interface + MockActivationPatchingBackend + layer-sweep
                            localization logic. No real backend yet (needs
                            TransformerLens/nnsight + GPU, see module docstring)
-tests/              - unit tests for all of the above (40 tests, run via pytest)
-notebooks/          - analysis notebooks. analysis_scaffold.ipynb runs the full
-                      run-experiment -> table -> scaling-curve-plot path against
-                      a synthetic backend; swap in HostedAPIBackend + load_gsm8k
-                      once real inference is unblocked (see notebook's last cell)
+tests/              - unit tests for all of the above (54 tests, run via pytest)
+notebooks/          - analysis_scaffold.ipynb runs the full run-experiment ->
+                      table -> scaling-curve-plot path against a synthetic backend
+                      (dry run, no real model calls). colab_run_experiment.ipynb
+                      is the real thing: open it in Google Colab (free T4 GPU),
+                      pick a model size, Run All -- no API key or signup needed.
 results/            - output plots and result tables. mock_demo_scaling_curve.png
-                      is synthetic (from the notebook above), not a real result
+                      is synthetic (from analysis_scaffold.ipynb), not a real
+                      result. results/raw/ is where real Colab-run output JSON
+                      files should be dropped once produced.
 ```
 
 ## Status
@@ -70,13 +80,23 @@ results/            - output plots and result tables. mock_demo_scaling_curve.pn
       `notebooks/analysis_scaffold.ipynb` against a synthetic backend, so it
       needs no code changes once real inference is available — just a
       backend + data-source swap (see notebook's last cell).
-- [ ] Hosted inference API selected and wired up — **blocked** on choosing
-      a provider (Together AI / Fireworks / Groq / similar) and budget. A
-      2026-07-09 pricing/availability check (see `NEEDS_YOUR_INPUT.md`) found
-      Together AI is the only one of the three with confirmed serverless
-      coverage of all three needed sizes (1.5B/7B/14B); Groq's docs only show
-      32B/70B, and Fireworks' support for the smaller sizes was ambiguous.
-- [ ] Truncation-test pipeline validated on one real model size.
+- [x] Inference plan decided (2026-07-16): free Colab GPU + `LocalHFBackend`
+      running real model weights locally, not a hosted API. See
+      `NEEDS_YOUR_INPUT.md` for the full reasoning (every hosted provider
+      tested, including free-tier OpenRouter, turned out to be either
+      unreachable from this sandbox or too rate-limited for the volume of
+      calls this experiment needs).
+- [x] `pipeline/inference.py:LocalHFBackend` implemented and unit-tested
+      against mocked `torch`/`transformers` (14 tests) — logic verified, but
+      **not yet run against real GPU hardware or real model weights**, since
+      that can't happen from this sandbox.
+- [x] `notebooks/colab_run_experiment.ipynb` built: clones this repo, loads
+      a chosen model size (1.5B/7B/14B, 4-bit for 14B), runs the real
+      truncation/corruption test, saves results as JSON. Needs a human to
+      actually open it in Colab and click Run — that's the one remaining
+      manual step, logged in `NEEDS_YOUR_INPUT.md`.
+- [ ] Truncation-test pipeline validated on one real model size (**next
+      concrete step — waiting on the Colab run above**).
 - [ ] Full run across 1.5B / 7B / 14B.
 - [ ] Scaling-curve plot and write-up of results.
 - [x] Optional-deeper-layer scaffold: `pipeline/activation_patching.py`
@@ -149,21 +169,33 @@ active research area.
   a separate piece of infrastructure from the hosted-API text-in/text-out
   path used for the core truncation test (see module docstring and
   `project_overview.md`'s compute plan).
-- This scheduled-task sandbox has a narrow network allowlist: `pypi.org` is
-  reachable, but `huggingface.co`, `api.together.xyz`, `api.fireworks.ai`,
-  and `api.groq.com` all return 403 from the sandbox's proxy (confirmed
-  again in Session 5). This means the real inference step likely can't run
-  from inside this sandbox even after a provider/API key is chosen — see
-  the open question in `NEEDS_YOUR_INPUT.md`.
+- This scheduled-task sandbox has a narrow network allowlist: `pypi.org` and
+  GitHub are reachable, but `huggingface.co`, `api.together.xyz`,
+  `api.fireworks.ai`, `api.groq.com`, and (confirmed 2026-07-16)
+  `openrouter.ai` all fail to connect from the sandbox's proxy. This is why
+  the project moved to a Colab-GPU-based plan instead of any hosted API —
+  see `NEEDS_YOUR_INPUT.md`'s 2026-07-16 entry for the full reasoning. The
+  real inference run itself (via `notebooks/colab_run_experiment.ipynb`)
+  still needs a human to execute it in Colab; it can't run unattended from
+  this sandbox either, for the same underlying reason.
+- `pipeline/inference.py:LocalHFBackend` has only been tested against a
+  mocked `torch`/`transformers` — it has never been exercised against real
+  model weights or real GPU hardware. It's plausible (not confirmed) that
+  something about the real libraries' behavior differs from what the mocks
+  assume once it's actually run in Colab.
 
 ## Next steps
 
-1. Choose a hosted inference provider for DeepSeek-R1-Distill-Qwen and wire
-   up `HostedAPIBackend._call_api` in `pipeline/inference.py`.
-2. Validate the pipeline end-to-end against real model output on a small
-   sample before committing to a full run.
-3. Run all three core model sizes (1.5B / 7B / 14B) and generate the
-   scaling-curve plot via `pipeline/scoring.py:plot_scaling_curve`.
+1. Run `notebooks/colab_run_experiment.ipynb` in Google Colab (free T4 GPU)
+   for the 1.5B model first, to validate `LocalHFBackend` against real
+   model output on a small sample before committing to larger runs.
+2. Drop the resulting JSON files into `results/raw/`, then repeat step 1 for
+   7B and 14B.
+3. Aggregate the three sizes' results and generate the scaling-curve plot
+   via `pipeline/scoring.py:plot_scaling_curve` (the aggregation logic
+   already exists in `notebooks/analysis_scaffold.ipynb`, just pointed at
+   synthetic data for now — swapping in the real `results/raw/*.json` files
+   needs no code changes to the plotting/CI logic itself).
 4. Write up results, limitations, and what to investigate next.
 5. Optional: activation-patching deep dive on the most interesting size,
    and a cross-post to the Alignment Forum / LessWrong.
